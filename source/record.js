@@ -17,23 +17,34 @@ function _startPromptAndInjectEventsScript(driver, next) {
 
   console.log('Begin record');
   console.log(
-    'Type q to quit, l for taking a screenshot and marking a live playback ' +
-    'point til next screenshot, and anything else to take a normal screenshot.'
+    'Type q to quit, p to record a pause, l for taking a screenshot and ' +
+    'marking a live playback point til next screenshot, and anything else ' +
+    'to take a normal screenshot.'
   );
 
   read({prompt: '> '}, function handleKeyPress(err, key) {
+    var action = consts.STEP_SCREENSHOT;
+
     if (key === 'q') return next(null, screenshotEvents);
 
+    if (key === 'p' ) action = consts.STEP_PAUSE;
+
     var event = {
-      action: consts.STEP_SCREENSHOT,
+      action: action,
       timeStamp: Date.now(),
     };
 
     if (key === 'l') event.livePlayback = true;
 
     screenshotEvents.push(event);
-    screenshotCount++;
-    console.log(screenshotCount + ' screenshot recorded.');
+
+    if (key === 'p') {
+      console.log('Pause added.');
+    } else {
+      screenshotCount++;
+      console.log(screenshotCount + ' screenshot recorded.');
+    }
+
     read({prompt: '> '}, handleKeyPress);
   });
 }
@@ -44,6 +55,11 @@ function _insertPauseEvents(events) {
 
   for (var i = 0; i < events.length; i++) {
     var currentEvent = events[i];
+
+    if (currentEvent.action === consts.STEP_PAUSE && !!events[i + 1]) {
+      currentEvent.ms = events[i + 1].timeStamp - currentEvent.timeStamp;
+    }
+
     returnEvents.push(currentEvent);
 
     if (currentEvent.action === consts.STEP_SCREENSHOT) {
